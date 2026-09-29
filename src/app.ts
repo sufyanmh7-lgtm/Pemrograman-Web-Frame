@@ -1,29 +1,31 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import cors from 'cors';
-import routes from './routes/index.js';
+import crypto from 'crypto';
 
 const app = express();
 
-app.use(cors());
+// Konfigurasi CORS dengan exposedHeaders agar X-Request-Id dapat dibaca client
+app.use(
+  cors({
+    exposedHeaders: ['X-Request-Id'],
+  })
+);
+
 app.use(express.json());
 
-// Route utama - cek apakah server berjalan
-app.get('/', (req: Request, res: Response) => {
-  res.status(200).json({ success: true, message: 'Backend Todo Praktikum Berjalan Mulus!' });
+// Middleware 1: Menambahkan header X-Request-Id ke request dan response
+app.use((req, res, next) => {
+  const requestId = crypto.randomUUID();
+  req.headers['x-request-id'] = requestId;
+  res.setHeader('X-Request-Id', requestId);
+  next();
 });
 
-// Daftarkan semua route dengan prefix /api
-app.use('/api', routes);
-
-// 404 Handler
-app.use((req: Request, res: Response) => {
-  res.status(404).json({ success: false, message: `Route ${req.method} ${req.url} tidak ditemukan!` });
-});
-
-// Global Error Handler
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('Terjadi error:', err.message);
-  res.status(500).json({ success: false, message: 'Terjadi kesalahan pada server.' });
+// Middleware 2: Menampilkan console log sesuai X-Request-Id
+app.use((req, res, next) => {
+  const requestId = req.headers['x-request-id'];
+  console.log(`[${requestId}] ${req.method} ${req.url}`);
+  next();
 });
 
 export default app;
